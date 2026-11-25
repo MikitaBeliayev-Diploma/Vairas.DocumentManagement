@@ -1,0 +1,8 @@
+**/bin
+**/obj
+.evidence
+.cache
+.git
+**/node_modules
+evidence
+documentation-update

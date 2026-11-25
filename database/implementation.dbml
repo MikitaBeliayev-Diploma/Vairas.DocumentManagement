@@ -1,0 +1,355 @@
+Project document_management {
+ database_type: 'PostgreSQL'
+ Note: 'Implementation projection: canonical domain baseline plus additive operational tables. Apply schema.sql then postgresql-constraints.sql in one private service schema. No remote FKs. Partial indexes/triggers are SQL companions, not DBML syntax.'
+}
+
+Table document_template {
+  template_id uuid [pk, not null]
+  school_id uuid [not null]
+  kind varchar [not null, note: 'Immutable; kind compatibility enforced by SQL trigger, not duplicated on children.']
+  name varchar [not null]
+  active_version_id uuid
+  revision bigint [not null]
+  indexes {
+    (school_id, template_id) [unique]
+  }
+  checks {
+    `kind IN ('TrainingContract','PracticalJournal','CompletionReport')`
+    `revision > 0`
+    `length(trim(name)) > 0`
+  }
+}
+
+Table template_version {
+  template_version_id uuid [pk, not null]
+  school_id uuid [not null]
+  template_id uuid [not null]
+  version_no integer [not null]
+  status varchar [not null]
+  file_id uuid [not null]
+  created_by uuid [not null]
+  created_at timestamptz [not null]
+  indexes {
+    (school_id, template_version_id) [unique]
+    (school_id, template_id, version_no) [unique]
+    (school_id, template_id, template_version_id) [unique]
+  }
+  checks {
+    `status IN ('Draft','Active','Archived')`
+    `version_no > 0`
+  }
+}
+
+Table file_object {
+  file_id uuid [pk, not null]
+  school_id uuid [not null]
+  storage_key varchar [not null]
+  purpose varchar [not null]
+  sha256 varchar(64) [not null]
+  byte_length bigint [not null]
+  media_type varchar [not null]
+  scan_status varchar [not null]
+  uploaded_by uuid [not null]
+  uploaded_at timestamptz [not null]
+  indexes {
+    (school_id, file_id) [unique]
+    (school_id, storage_key) [unique]
+  }
+  checks {
+    `purpose IN ('Template','Rendered','SignedCopy','SourceBasis')`
+    `scan_status IN ('Pending','Clean','Rejected')`
+    `byte_length > 0`
+    `sha256 ~ '^[0-9a-f]{64}$'`
+    `length(trim(storage_key)) > 0 AND length(trim(media_type)) > 0`
+  }
+}
+
+Table training_contract {
+  contract_id uuid [pk, not null]
+  school_id uuid [not null]
+  enrollment_id uuid [not null]
+  student_id uuid [not null]
+  template_version_id uuid [not null]
+  generated_file_id uuid [not null]
+  basis_file_id uuid [not null]
+  basis_schema_version varchar [not null]
+  status varchar [not null]
+  replaces_contract_id uuid
+  generated_by uuid [not null]
+  generated_at timestamptz [not null]
+  revision bigint [not null]
+  indexes {
+    (school_id, contract_id) [unique]
+    (school_id, enrollment_id, contract_id) [unique]
+  }
+  checks {
+    `status IN ('Generated','Signed','Cancelled')`
+    `revision > 0`
+    `replaces_contract_id IS NULL OR replaces_contract_id <> contract_id`
+    `length(trim(basis_schema_version)) > 0`
+  }
+}
+
+Table contract_signed_copy {
+  signed_copy_id uuid [pk, not null]
+  school_id uuid [not null]
+  contract_id uuid [not null]
+  copy_no integer [not null]
+  file_id uuid [not null]
+  is_current boolean [not null]
+  declared_signed_at timestamptz [not null]
+  recorded_at timestamptz [not null]
+  recorded_by uuid [not null]
+  basis text [not null]
+  indexes {
+    (school_id, signed_copy_id) [unique]
+    (school_id, contract_id, signed_copy_id) [unique]
+    (school_id, contract_id, copy_no) [unique]
+  }
+  checks {
+    `copy_no > 0`
+    `declared_signed_at <= recorded_at`
+    `length(trim(basis)) > 0`
+  }
+}
+
+Table training_document {
+  document_id uuid [pk, not null]
+  school_id uuid [not null]
+  enrollment_id uuid [not null]
+  kind varchar [not null, note: 'Immutable; kind compatibility enforced by SQL trigger, not duplicated on children.']
+  revision bigint [not null]
+  current_version_id uuid [note: 'Selected publication only; not proof of current educational readiness.']
+  indexes {
+    (school_id, document_id) [unique]
+    (school_id, enrollment_id, kind) [unique]
+    (school_id, document_id, enrollment_id) [unique]
+  }
+  checks {
+    `kind IN ('PracticalJournal','CompletionReport')`
+    `revision > 0`
+  }
+}
+
+Table document_version {
+  document_version_id uuid [pk, not null]
+  school_id uuid [not null]
+  document_id uuid [not null]
+  enrollment_id uuid [not null]
+  version_no integer [not null]
+  template_version_id uuid [not null]
+  evidence_snapshot_id uuid [not null]
+  dependency_revision bigint [not null]
+  evidence_status varchar [not null]
+  rendered_file_id uuid [not null]
+  basis_file_id uuid [not null]
+  basis_schema_version varchar [not null]
+  renderer_version varchar [not null]
+  state varchar [not null]
+  revision bigint [not null]
+  generated_by uuid [not null]
+  generated_at timestamptz [not null]
+  indexes {
+    (school_id, document_version_id) [unique]
+    (school_id, document_id, document_version_id) [unique]
+    (school_id, document_id, version_no) [unique]
+  }
+  checks {
+    `version_no > 0`
+    `dependency_revision >= 0`
+    `revision > 0`
+    `evidence_status IN ('Ready','Incomplete')`
+    `state IN ('Prepared','Indeterminate','PublishedReview','PublishedReady','Stale','Withdrawn')`
+    `state <> 'PublishedReady' OR evidence_status = 'Ready'`
+    `length(trim(basis_schema_version)) > 0 AND length(trim(renderer_version)) > 0`
+  }
+}
+
+Table state_event {
+  event_id uuid [pk, not null]
+  school_id uuid [not null]
+  template_id uuid
+  template_version_id uuid
+  signed_copy_id uuid
+  action varchar [not null]
+  contract_id uuid
+  document_id uuid [note: 'TrainingDocument root audit target; from_state/to_state encode selected UUID or Unselected.']
+  document_version_id uuid
+  sequence_no bigint [not null]
+  from_state varchar
+  to_state varchar [not null]
+  actor_id uuid [not null]
+  occurred_at timestamptz [not null]
+  reason text [not null]
+  command_id uuid [not null]
+  indexes {
+    (school_id, event_id) [unique]
+    (school_id, template_id, sequence_no) [unique]
+    (school_id, contract_id, sequence_no) [unique]
+    (school_id, document_id, sequence_no) [unique]
+    (school_id, document_version_id, sequence_no) [unique]
+  }
+  checks {
+    `num_nonnulls(template_id, contract_id, document_id, document_version_id) = 1`
+    `template_version_id IS NULL OR template_id IS NOT NULL`
+    `signed_copy_id IS NULL OR contract_id IS NOT NULL`
+    `length(trim(action)) > 0`
+    `sequence_no > 0`
+    `length(trim(reason)) > 0`
+  }
+}
+
+Table operation_receipt {
+  command_id uuid [pk, not null]
+  school_id uuid [not null]
+  actor_id uuid [not null]
+  template_id uuid
+  template_version_id uuid
+  operation varchar [not null]
+  request_digest varchar(64) [not null]
+  status varchar [not null]
+  contract_id uuid
+  document_id uuid
+  document_version_id uuid
+  outcome_code varchar
+  created_at timestamptz [not null]
+  completed_at timestamptz
+  indexes {
+    (school_id, command_id) [unique]
+  }
+  checks {
+    `status IN ('Pending','Succeeded','Rejected','Indeterminate')`
+    `request_digest ~ '^[0-9a-f]{64}$'`
+    `(status IN ('Pending','Indeterminate') AND completed_at IS NULL) OR (status IN ('Succeeded','Rejected') AND completed_at IS NOT NULL)`
+    `completed_at IS NULL OR completed_at >= created_at`
+    `num_nonnulls(template_id, contract_id, document_id, document_version_id) <= 1`
+    `template_version_id IS NULL OR template_id IS NOT NULL`
+    `status NOT IN ('Succeeded','Rejected') OR outcome_code IS NOT NULL`
+    `length(trim(operation)) > 0 AND (outcome_code IS NULL OR length(trim(outcome_code)) > 0)`
+  }
+}
+
+Table evidence_checkpoint {
+  school_id uuid [not null]
+  enrollment_id uuid [not null]
+  dependency_revision bigint [not null]
+  last_change_id uuid [not null]
+  observed_at timestamptz [not null]
+  indexes {
+    (school_id, enrollment_id) [pk]
+  }
+  checks {
+    `dependency_revision >= 0`
+  }
+}
+Ref: template_version.(school_id, template_id) > document_template.(school_id, template_id)
+Ref: document_template.(school_id, template_id, active_version_id) > template_version.(school_id, template_id, template_version_id)
+Ref: template_version.(school_id, file_id) > file_object.(school_id, file_id)
+Ref: training_contract.(school_id, generated_file_id) > file_object.(school_id, file_id)
+Ref: training_contract.(school_id, basis_file_id) > file_object.(school_id, file_id)
+Ref: training_contract.(school_id, template_version_id) > template_version.(school_id, template_version_id)
+Ref: training_contract.(school_id, enrollment_id, replaces_contract_id) > training_contract.(school_id, enrollment_id, contract_id)
+Ref: contract_signed_copy.(school_id, contract_id) > training_contract.(school_id, contract_id)
+Ref: contract_signed_copy.(school_id, file_id) > file_object.(school_id, file_id)
+Ref: document_version.(school_id, document_id, enrollment_id) > training_document.(school_id, document_id, enrollment_id)
+Ref: document_version.(school_id, template_version_id) > template_version.(school_id, template_version_id)
+Ref: document_version.(school_id, rendered_file_id) > file_object.(school_id, file_id)
+Ref: document_version.(school_id, basis_file_id) > file_object.(school_id, file_id)
+Ref: state_event.(school_id, contract_id) > training_contract.(school_id, contract_id)
+Ref: state_event.(school_id, document_version_id) > document_version.(school_id, document_version_id)
+Ref: operation_receipt.(school_id, contract_id) > training_contract.(school_id, contract_id)
+Ref: operation_receipt.(school_id, document_version_id) > document_version.(school_id, document_version_id)
+
+Ref: training_document.(school_id, document_id, current_version_id) > document_version.(school_id, document_id, document_version_id)
+Ref: state_event.(school_id, template_id) > document_template.(school_id, template_id)
+Ref: state_event.(school_id, template_id, template_version_id) > template_version.(school_id, template_id, template_version_id)
+Ref: state_event.(school_id, contract_id, signed_copy_id) > contract_signed_copy.(school_id, contract_id, signed_copy_id)
+Ref: state_event.(school_id, command_id) > operation_receipt.(school_id, command_id)
+Ref: operation_receipt.(school_id, template_id) > document_template.(school_id, template_id)
+Ref: operation_receipt.(school_id, template_id, template_version_id) > template_version.(school_id, template_id, template_version_id)
+Ref: state_event.(school_id, document_id) > training_document.(school_id, document_id)
+Ref: operation_receipt.(school_id, document_id) > training_document.(school_id, document_id)
+
+Table document_job {
+  id uuid [pk, not null]
+  school_id uuid [not null]
+  enrollment_id uuid [not null]
+  actor_id uuid [not null]
+  identity_id uuid [not null]
+  session_id uuid [not null]
+  template_version_id uuid [not null]
+  snapshot_id uuid
+  replaces_contract_id uuid
+  source_snapshot_version text [not null]
+  kind text [not null]
+  status text [not null]
+  document_id uuid
+  result_version_id uuid
+  missing_items_json text [not null]
+  error_code text
+  attempts integer [not null]
+  next_attempt_at timestamptz [not null]
+  lease_until timestamptz
+  lease_id uuid
+  created_at timestamptz [not null]
+}
+
+Table operation_outcome {
+  id uuid [not null]
+  school_id uuid [not null]
+  response_json text [not null]
+ indexes { (school_id,id) [pk] }
+}
+
+Table rendered_artifact {
+  id uuid [pk, not null]
+  school_id uuid [not null]
+  contract_id uuid
+  document_version_id uuid
+  file_id uuid [not null]
+  format text [not null]
+}
+
+Table publication_decision {
+  id uuid [pk, not null]
+  school_id uuid [not null]
+  document_version_id uuid [not null]
+  actor_id uuid [not null]
+  identity_id uuid [not null]
+  session_id uuid [not null]
+  expected_revision bigint [not null]
+  expected_version_revision bigint [not null]
+  artifact_digest text [not null]
+  status text [not null]
+  reason text [not null]
+  created_at timestamptz [not null]
+  decided_at timestamptz
+}
+
+Table download_grant {
+  id uuid [pk, not null]
+  school_id uuid [not null]
+  actor_id uuid [not null]
+  document_id uuid [not null]
+  file_id uuid [not null]
+  version_id uuid
+  signed_copy_id uuid
+  historical boolean [not null]
+  expires_at timestamptz [not null]
+}
+
+Table inbox_message {
+  id uuid [pk, not null]
+  school_id uuid [not null]
+  fingerprint text [not null]
+  processed_at timestamptz [not null]
+}
+
+Table document_review {
+  id uuid [pk, not null]
+  school_id uuid [not null]
+  document_version_id uuid [not null]
+  actor_id uuid [not null]
+  reviewed_at timestamptz [not null]
+  reason text [not null]
+}

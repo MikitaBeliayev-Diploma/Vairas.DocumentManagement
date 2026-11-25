@@ -1,0 +1,269 @@
+@baseUrl = https://localhost:7700
+@token = INSERT_CURRENT_USER_TOKEN
+@schoolId = 11111111-1111-4111-8111-111111111111
+@operationId = 22222222-2222-4222-8222-222222222222
+@templatePath = ../.evidence/templates/PracticalJournal.docx
+
+# Replace synthetic IDs and revisions with owner/API responses. Use a new operationId for each distinct command; retain it for exact retries.
+
+### listDocumentTemplates
+GET {{baseUrl}}/api/v1/schools/{{schoolId}}/document-templates
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+
+### createDocumentTemplate
+POST {{baseUrl}}/api/v1/schools/{{schoolId}}/document-templates
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "kind": "PracticalJournal",
+  "name": "DEMO school template"
+}
+
+### getDocumentTemplate
+GET {{baseUrl}}/api/v1/schools/{{schoolId}}/document-templates/11111111-1111-4111-8111-111111111111
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+
+### renameDocumentTemplate
+PUT {{baseUrl}}/api/v1/schools/{{schoolId}}/document-templates/11111111-1111-4111-8111-111111111111
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "name": "DEMO school template",
+  "expectedRevision": 1
+}
+
+### addDocumentTemplateVersion
+POST {{baseUrl}}/api/v1/schools/{{schoolId}}/document-templates/11111111-1111-4111-8111-111111111111/versions
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "fileId": "11111111-1111-4111-8111-111111111111",
+  "expectedRevision": 1
+}
+
+### activateDocumentTemplateVersion
+POST {{baseUrl}}/api/v1/schools/{{schoolId}}/document-templates/11111111-1111-4111-8111-111111111111/versions/11111111-1111-4111-8111-111111111111/activate
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "expectedRevision": 1,
+  "reason": "Authorized administrator reviewed the exact version."
+}
+
+### archiveDocumentTemplateVersion
+POST {{baseUrl}}/api/v1/schools/{{schoolId}}/document-templates/11111111-1111-4111-8111-111111111111/versions/11111111-1111-4111-8111-111111111111/archive
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "expectedRevision": 1,
+  "reason": "Authorized administrator reviewed the exact version."
+}
+
+### uploadDocumentFile
+POST {{baseUrl}}/api/v1/schools/{{schoolId}}/document-files?purpose=Template
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+
+### getDocumentFileStatus
+GET {{baseUrl}}/api/v1/schools/{{schoolId}}/document-files/11111111-1111-4111-8111-111111111111
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+
+### generateTrainingContract
+POST {{baseUrl}}/api/v1/schools/{{schoolId}}/contracts
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "enrollmentId": "11111111-1111-4111-8111-111111111111",
+  "templateId": "11111111-1111-4111-8111-111111111111"
+}
+
+### generatePracticalJournal
+POST {{baseUrl}}/api/v1/enrollments/11111111-1111-4111-8111-111111111111/journals?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "sourceSnapshotVersion": "evidence-11111111-1111-4111-8111-111111111111-1",
+  "templateId": "11111111-1111-4111-8111-111111111111"
+}
+
+### generateCompletionReport
+POST {{baseUrl}}/api/v1/enrollments/11111111-1111-4111-8111-111111111111/completion-reports?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "sourceSnapshotVersion": "evidence-11111111-1111-4111-8111-111111111111-1",
+  "templateId": "11111111-1111-4111-8111-111111111111"
+}
+
+### getDocumentJob
+GET {{baseUrl}}/api/v1/document-jobs/11111111-1111-4111-8111-111111111111?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+
+### listEnrollmentContracts
+GET {{baseUrl}}/api/v1/enrollments/11111111-1111-4111-8111-111111111111/contracts?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+
+### getTrainingContract
+GET {{baseUrl}}/api/v1/schools/{{schoolId}}/contracts/11111111-1111-4111-8111-111111111111
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+
+### attachContractSignedCopy
+POST {{baseUrl}}/api/v1/schools/{{schoolId}}/contracts/11111111-1111-4111-8111-111111111111/signed-copies
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "fileId": "11111111-1111-4111-8111-111111111111",
+  "expectedRevision": 1,
+  "declaredSignedAt": "2026-11-24T10:00:00Z",
+  "basis": "Externally signed PDF supplied by the school."
+}
+
+### cancelTrainingContract
+POST {{baseUrl}}/api/v1/schools/{{schoolId}}/contracts/11111111-1111-4111-8111-111111111111/cancel
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "expectedRevision": 1,
+  "reason": "Authorized administrator reviewed the exact version."
+}
+
+### listEnrollmentDocuments
+GET {{baseUrl}}/api/v1/enrollments/11111111-1111-4111-8111-111111111111/documents?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+
+### getTrainingDocument
+GET {{baseUrl}}/api/v1/documents/11111111-1111-4111-8111-111111111111?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+
+### reviewTrainingDocument
+POST {{baseUrl}}/api/v1/documents/11111111-1111-4111-8111-111111111111/versions/11111111-1111-4111-8111-111111111111/review?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "expectedRevision": 1,
+  "expectedVersionRevision": 1,
+  "reason": "Authorized administrator reviewed the exact version."
+}
+
+### publishTrainingDocument
+POST {{baseUrl}}/api/v1/documents/11111111-1111-4111-8111-111111111111/versions/11111111-1111-4111-8111-111111111111/publish?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "expectedRevision": 1,
+  "expectedVersionRevision": 1,
+  "mode": "Ready",
+  "reason": "Authorized administrator reviewed the exact version."
+}
+
+### withdrawTrainingDocument
+POST {{baseUrl}}/api/v1/documents/11111111-1111-4111-8111-111111111111/versions/11111111-1111-4111-8111-111111111111/withdraw?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "expectedRevision": 1,
+  "expectedVersionRevision": 1,
+  "reason": "Authorized administrator reviewed the exact version."
+}
+
+### selectTrainingDocument
+POST {{baseUrl}}/api/v1/documents/11111111-1111-4111-8111-111111111111/versions/11111111-1111-4111-8111-111111111111/select?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "expectedRevision": 1,
+  "expectedVersionRevision": 1,
+  "reason": "Authorized administrator reviewed the exact version."
+}
+
+### clearTrainingDocument
+POST {{baseUrl}}/api/v1/documents/11111111-1111-4111-8111-111111111111/versions/11111111-1111-4111-8111-111111111111/clear?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{
+  "expectedRevision": 1,
+  "expectedVersionRevision": 1,
+  "reason": "Authorized administrator reviewed the exact version."
+}
+
+### getTrainingDocumentHistory
+GET {{baseUrl}}/api/v1/documents/11111111-1111-4111-8111-111111111111/history?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+
+### getTrainingContractHistory
+GET {{baseUrl}}/api/v1/schools/{{schoolId}}/contracts/11111111-1111-4111-8111-111111111111/history
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+
+### getDocumentDownload
+GET {{baseUrl}}/api/v1/documents/11111111-1111-4111-8111-111111111111/download?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+
+### downloadDocumentContent
+GET {{baseUrl}}/api/v1/document-downloads/11111111-1111-4111-8111-111111111111?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: document-example-01
+
+### Invalid generation body expected 400
+POST {{baseUrl}}/api/v1/enrollments/11111111-1111-4111-8111-111111111111/journals?schoolId={{schoolId}}
+Authorization: Bearer {{token}}
+Idempotency-Key: {{operationId}}
+Content-Type: application/json
+
+{}

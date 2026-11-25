@@ -1,0 +1,604 @@
+asyncapi: 3.0.0
+info:
+  title: Vairas Document Management Integration Events
+  version: 1.0.0
+  description: Versioned consumer contract. Broker transport is at-least-once;
+    payloads are owner change hints. Physical producer-family topics and Subject
+    filters are configured externally.
+defaultContentType: application/json
+channels:
+  trainingEvidenceInvalidated:
+    address: vairas.learning.training-evidence-invalidated.v1
+    messages:
+      TrainingEvidenceInvalidated:
+        $ref: "#/components/messages/TrainingEvidenceInvalidated"
+  practicalRecordConfirmed:
+    address: vairas.learning.practical-record-confirmed.v1
+    title: PracticalRecordConfirmed v1
+    description: Logical integration event channel.
+    messages:
+      PracticalRecordConfirmed:
+        $ref: "#/components/messages/PracticalRecordConfirmed"
+  practicalRecordRevised:
+    address: vairas.learning.practical-record-revised.v1
+    title: PracticalRecordRevised v1
+    description: Logical integration event channel.
+    messages:
+      PracticalRecordRevised:
+        $ref: "#/components/messages/PracticalRecordRevised"
+  studentEnrollmentCompleted:
+    address: vairas.school.enrollment-completed.v1
+    title: StudentEnrollmentCompleted v1
+    description: Logical integration event channel.
+    messages:
+      StudentEnrollmentCompleted:
+        $ref: "#/components/messages/StudentEnrollmentCompleted"
+  studentEnrollmentEnded:
+    address: vairas.school.enrollment-ended.v1
+    title: StudentEnrollmentEnded v1
+    description: Logical integration event channel.
+    messages:
+      StudentEnrollmentEnded:
+        $ref: "#/components/messages/StudentEnrollmentEnded"
+  studentEnrollmentStarted:
+    address: vairas.school.enrollment-started.v1
+    title: StudentEnrollmentStarted v1
+    description: Logical integration event channel.
+    messages:
+      StudentEnrollmentStarted:
+        $ref: "#/components/messages/StudentEnrollmentStarted"
+operations:
+  consumeTrainingEvidenceInvalidated:
+    action: receive
+    channel:
+      $ref: "#/channels/trainingEvidenceInvalidated"
+    messages:
+      - $ref: "#/channels/trainingEvidenceInvalidated/messages/TrainingEvidenceInvalida\
+          ted"
+  consumePracticalRecordConfirmed:
+    action: receive
+    channel:
+      $ref: "#/channels/practicalRecordConfirmed"
+    messages:
+      - $ref: "#/channels/practicalRecordConfirmed/messages/PracticalRecordConfirmed"
+  consumePracticalRecordRevised:
+    action: receive
+    channel:
+      $ref: "#/channels/practicalRecordRevised"
+    messages:
+      - $ref: "#/channels/practicalRecordRevised/messages/PracticalRecordRevised"
+  consumeStudentEnrollmentCompleted:
+    action: receive
+    channel:
+      $ref: "#/channels/studentEnrollmentCompleted"
+    messages:
+      - $ref: "#/channels/studentEnrollmentCompleted/messages/StudentEnrollmentComplete\
+          d"
+  consumeStudentEnrollmentEnded:
+    action: receive
+    channel:
+      $ref: "#/channels/studentEnrollmentEnded"
+    messages:
+      - $ref: "#/channels/studentEnrollmentEnded/messages/StudentEnrollmentEnded"
+  consumeStudentEnrollmentStarted:
+    action: receive
+    channel:
+      $ref: "#/channels/studentEnrollmentStarted"
+    messages:
+      - $ref: "#/channels/studentEnrollmentStarted/messages/StudentEnrollmentStarted"
+components:
+  schemas:
+    LessonParticipantsChangedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - schoolId
+        - lessonId
+        - lessonKind
+        - teacherId
+        - groupId
+        - groupMembershipRevision
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+        lessonId:
+          type: string
+          format: uuid
+        lessonKind:
+          type: string
+          const: Theory
+        teacherId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        groupMembershipRevision:
+          type: integer
+          minimum: 1
+    SchoolLearningAuthorityChangedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - schoolId
+        - schoolRevision
+        - changeKind
+        - effectiveAt
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+        schoolRevision:
+          type: integer
+          minimum: 1
+        changeKind:
+          type: string
+          minLength: 1
+        effectiveAt:
+          type: string
+          format: date-time
+    TrainingEvidenceInvalidatedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - schoolId
+        - enrollmentId
+        - dependencyRevision
+        - reason
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+        enrollmentId:
+          type: string
+          format: uuid
+        dependencyRevision:
+          type: integer
+          minimum: 1
+        reason:
+          type: string
+          minLength: 1
+    AssessmentResultRevisedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - schoolId
+        - enrollmentId
+        - assessmentId
+        - version
+        - status
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+        enrollmentId:
+          type: string
+          format: uuid
+        assessmentId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 2
+        status:
+          type: string
+          enum:
+            - Recorded
+            - ReviewRequired
+            - Annulled
+    IntegrationHeaders:
+      type: object
+      additionalProperties: false
+      description: Application headers only; broker protocol-level delivery headers
+        are transport-specific.
+      required:
+        - eventId
+        - eventType
+        - eventVersion
+        - occurredAt
+        - producer
+        - correlationId
+        - aggregateId
+        - aggregateVersion
+      properties:
+        eventId: &a2
+          type: string
+          format: uuid
+        eventType: &a1
+          type: string
+          minLength: 1
+        eventVersion:
+          type: integer
+          const: 1
+        occurredAt:
+          type: string
+          format: date-time
+        producer:
+          type: string
+          enum:
+            - school
+            - scheduling
+            - vehicle
+            - learning
+            - documents
+            - notifications
+            - user
+        correlationId: *a1
+        causationId: *a1
+        aggregateId: *a2
+        aggregateVersion:
+          type: integer
+          minimum: 1
+        traceparent: *a1
+    AssessmentFailedPayload:
+      type: object
+      description: Result recorded with Failed outcome. Distribution restricted to
+        authorized notifications handling.
+      additionalProperties: false
+      required:
+        - schoolId
+        - enrollmentId
+        - assessmentId
+        - assessedAt
+      properties:
+        schoolId: &a3
+          type: string
+          format: uuid
+        enrollmentId: *a3
+        assessmentId: *a3
+        assessedAt:
+          type: string
+          format: date-time
+    AssessmentPassedPayload:
+      type: object
+      description: Result recorded with Passed outcome. Do not include student marks,
+        teacher comments or health data in generic event.
+      additionalProperties: false
+      required:
+        - schoolId
+        - enrollmentId
+        - assessmentId
+        - assessedAt
+      properties:
+        schoolId: &a4
+          type: string
+          format: uuid
+        enrollmentId: *a4
+        assessmentId: *a4
+        assessedAt:
+          type: string
+          format: date-time
+    LessonCompletedPayload:
+      type: object
+      description: Scheduling completed lifecycle, also emitted at a new
+        aggregateVersion after an actual-interval correction. Fetch current
+        training-source for actual bounds and identity; planned startsAt/endsAt
+        are not actuals. Never grants credit. Theory additionally requires
+        verified attendance and confirmation.
+      additionalProperties: false
+      required:
+        - schoolId
+        - lessonId
+        - lessonKind
+        - teacherId
+        - startsAt
+        - endsAt
+        - scheduledDurationMinutes
+      properties:
+        schoolId: &a5
+          type: string
+          format: uuid
+        lessonId: *a5
+        lessonKind:
+          type: string
+          enum:
+            - Practical
+            - Theory
+        teacherId: *a5
+        enrollmentId: *a5
+        groupId: *a5
+        vehicleId: *a5
+        startsAt: &a6
+          type: string
+          format: date-time
+        endsAt: *a6
+        scheduledDurationMinutes:
+          type: integer
+          minimum: 1
+      allOf:
+        - if:
+            properties:
+              lessonKind:
+                const: Practical
+            required:
+              - lessonKind
+          then:
+            required:
+              - enrollmentId
+              - vehicleId
+          else:
+            required:
+              - groupId
+    PracticalRecordConfirmedPayload:
+      type: object
+      description: Current revision was confirmed by both instructor and student;
+        confirmed credit computed by Learning in the same local transaction.
+      additionalProperties: false
+      required:
+        - schoolId
+        - enrollmentId
+        - lessonId
+        - recordId
+        - recordRevision
+        - creditedDurationMinutes
+        - confirmedAt
+      properties:
+        schoolId: &a7
+          type: string
+          format: uuid
+        enrollmentId: *a7
+        lessonId: *a7
+        recordId: *a7
+        recordRevision:
+          type: integer
+          minimum: 1
+        creditedDurationMinutes:
+          type: integer
+          minimum: 1
+        confirmedAt:
+          type: string
+          format: date-time
+    PracticalRecordRevisedPayload:
+      type: object
+      description: Confirmed or pending record facts changed. Prior confirmations for
+        current record are invalidated and credit is adjusted locally.
+      additionalProperties: false
+      required:
+        - schoolId
+        - enrollmentId
+        - lessonId
+        - recordId
+        - previousRevision
+        - recordRevision
+        - revisedAt
+      properties:
+        schoolId: &a8
+          type: string
+          format: uuid
+        enrollmentId: *a8
+        lessonId: *a8
+        recordId: *a8
+        previousRevision: &a9
+          type: integer
+          minimum: 1
+        recordRevision: *a9
+        revisedAt:
+          type: string
+          format: date-time
+    StudentEnrollmentCompletedPayload:
+      type: object
+      description: An enrollment has reached Completed, which differs from an
+        early/exceptional end.
+      additionalProperties: false
+      required:
+        - schoolId
+        - enrollmentId
+        - completedAt
+      properties:
+        schoolId: &a10
+          type: string
+          format: uuid
+        enrollmentId: *a10
+        completedAt:
+          type: string
+          format: date-time
+    StudentEnrollmentEndedPayload:
+      type: object
+      description: An enrollment has ended as withdrawn/transferred/cancelled;
+        affected future lessons require review, not silent deletion.
+      additionalProperties: false
+      required:
+        - schoolId
+        - enrollmentId
+        - endReason
+        - endedAt
+      properties:
+        schoolId: &a11
+          type: string
+          format: uuid
+        enrollmentId: *a11
+        endReason:
+          type: string
+          enum:
+            - Withdrawn
+            - Transferred
+            - Cancelled
+        endedAt:
+          type: string
+          format: date-time
+    StudentEnrollmentStartedPayload:
+      type: object
+      description: Enrollment is created and active; Learning may initialize
+        StudentTraining, Scheduling may refresh eligibility projection.
+      additionalProperties: false
+      required:
+        - schoolId
+        - enrollmentId
+        - studentId
+        - drivingLicenseCategory
+        - startedAt
+      properties:
+        schoolId: &a12
+          type: string
+          format: uuid
+        enrollmentId: *a12
+        studentId: *a12
+        drivingLicenseCategory:
+          type: string
+          minLength: 1
+        startedAt:
+          type: string
+          format: date-time
+  messages:
+    TrainingEvidenceInvalidated:
+      name: TrainingEvidenceInvalidated
+      title: TrainingEvidenceInvalidated v1
+      contentType: application/json
+      headers:
+        $ref: "#/components/schemas/IntegrationHeaders"
+      payload:
+        $ref: "#/components/schemas/TrainingEvidenceInvalidatedPayload"
+      correlationId:
+        location: $message.header#/correlationId
+    PracticalRecordConfirmed:
+      name: PracticalRecordConfirmed
+      title: PracticalRecordConfirmed v1
+      summary: Current revision was confirmed by both instructor and student;
+        confirmed credit computed by Learning in the same local transaction.
+      contentType: application/json
+      headers:
+        $ref: "#/components/schemas/IntegrationHeaders"
+      payload:
+        $ref: "#/components/schemas/PracticalRecordConfirmedPayload"
+      correlationId:
+        location: $message.header#/correlationId
+      examples:
+        - name: samplePracticalRecordConfirmed
+          headers:
+            eventId: 20000000-0000-4000-8000-000000000001
+            eventType: PracticalRecordConfirmed
+            eventVersion: 1
+            occurredAt: 2026-11-15T16:00:00Z
+            producer: learning
+            correlationId: corr-2026-11-15-001
+            aggregateId: 10000000-0000-4000-8000-000000000014
+            aggregateVersion: 3
+          payload:
+            schoolId: 10000000-0000-4000-8000-000000000001
+            enrollmentId: 10000000-0000-4000-8000-000000000002
+            lessonId: 10000000-0000-4000-8000-000000000012
+            recordId: 10000000-0000-4000-8000-000000000014
+            recordRevision: 2
+            creditedDurationMinutes: 60
+            confirmedAt: 2026-11-20T14:00:00Z
+      x-contract-status: NEW proposal from ADR-004, not yet in agreed DDD
+    PracticalRecordRevised:
+      name: PracticalRecordRevised
+      title: PracticalRecordRevised v1
+      summary: Confirmed or pending record facts changed. Prior confirmations for
+        current record are invalidated and credit is adjusted locally.
+      contentType: application/json
+      headers:
+        $ref: "#/components/schemas/IntegrationHeaders"
+      payload:
+        $ref: "#/components/schemas/PracticalRecordRevisedPayload"
+      correlationId:
+        location: $message.header#/correlationId
+      examples:
+        - name: samplePracticalRecordRevised
+          headers:
+            eventId: 20000000-0000-4000-8000-000000000001
+            eventType: PracticalRecordRevised
+            eventVersion: 1
+            occurredAt: 2026-11-15T16:00:00Z
+            producer: learning
+            correlationId: corr-2026-11-15-001
+            aggregateId: 10000000-0000-4000-8000-000000000014
+            aggregateVersion: 3
+          payload:
+            schoolId: 10000000-0000-4000-8000-000000000001
+            enrollmentId: 10000000-0000-4000-8000-000000000002
+            lessonId: 10000000-0000-4000-8000-000000000012
+            recordId: 10000000-0000-4000-8000-000000000014
+            previousRevision: 1
+            recordRevision: 2
+            revisedAt: 2026-11-20T13:00:00Z
+      x-contract-status: NEW proposal from ADR-004, not yet in agreed DDD
+    StudentEnrollmentCompleted:
+      name: StudentEnrollmentCompleted
+      title: StudentEnrollmentCompleted v1
+      summary: An enrollment has reached Completed, which differs from an
+        early/exceptional end.
+      contentType: application/json
+      headers:
+        $ref: "#/components/schemas/IntegrationHeaders"
+      payload:
+        $ref: "#/components/schemas/StudentEnrollmentCompletedPayload"
+      correlationId:
+        location: $message.header#/correlationId
+      examples:
+        - name: sampleStudentEnrollmentCompleted
+          headers:
+            eventId: 20000000-0000-4000-8000-000000000001
+            eventType: StudentEnrollmentCompleted
+            eventVersion: 1
+            occurredAt: 2026-11-15T16:00:00Z
+            producer: school
+            correlationId: corr-2026-11-15-001
+            aggregateId: 10000000-0000-4000-8000-000000000002
+            aggregateVersion: 3
+          payload:
+            schoolId: 10000000-0000-4000-8000-000000000001
+            enrollmentId: 10000000-0000-4000-8000-000000000002
+            completedAt: 2026-11-15T14:00:00Z
+      x-contract-status: Implemented message shape; deployment unverified
+    StudentEnrollmentEnded:
+      name: StudentEnrollmentEnded
+      title: StudentEnrollmentEnded v1
+      summary: An enrollment has ended as withdrawn/transferred/cancelled; affected
+        future lessons require review, not silent deletion.
+      contentType: application/json
+      headers:
+        $ref: "#/components/schemas/IntegrationHeaders"
+      payload:
+        $ref: "#/components/schemas/StudentEnrollmentEndedPayload"
+      correlationId:
+        location: $message.header#/correlationId
+      examples:
+        - name: sampleStudentEnrollmentEnded
+          headers:
+            eventId: 20000000-0000-4000-8000-000000000001
+            eventType: StudentEnrollmentEnded
+            eventVersion: 1
+            occurredAt: 2026-11-15T16:00:00Z
+            producer: school
+            correlationId: corr-2026-11-15-001
+            aggregateId: 10000000-0000-4000-8000-000000000002
+            aggregateVersion: 3
+          payload:
+            schoolId: 10000000-0000-4000-8000-000000000001
+            enrollmentId: 10000000-0000-4000-8000-000000000002
+            endReason: Transferred
+            endedAt: 2026-11-15T15:00:00Z
+      x-contract-status: Implemented message shape; deployment unverified
+    StudentEnrollmentStarted:
+      name: StudentEnrollmentStarted
+      title: StudentEnrollmentStarted v1
+      summary: Enrollment is created and active; Learning may initialize
+        StudentTraining, Scheduling may refresh eligibility projection.
+      contentType: application/json
+      headers:
+        $ref: "#/components/schemas/IntegrationHeaders"
+      payload:
+        $ref: "#/components/schemas/StudentEnrollmentStartedPayload"
+      correlationId:
+        location: $message.header#/correlationId
+      examples:
+        - name: sampleStudentEnrollmentStarted
+          headers:
+            eventId: 20000000-0000-4000-8000-000000000001
+            eventType: StudentEnrollmentStarted
+            eventVersion: 1
+            occurredAt: 2026-11-15T16:00:00Z
+            producer: school
+            correlationId: corr-2026-11-15-001
+            aggregateId: 10000000-0000-4000-8000-000000000002
+            aggregateVersion: 3
+          payload:
+            schoolId: 10000000-0000-4000-8000-000000000001
+            enrollmentId: 10000000-0000-4000-8000-000000000002
+            studentId: 10000000-0000-4000-8000-000000000003
+            drivingLicenseCategory: B
+            startedAt: 2026-11-15T08:00:00Z
+      x-contract-status: Implemented message shape; deployment unverified

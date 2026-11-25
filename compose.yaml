@@ -1,0 +1,27 @@
+name: vairas-documents-local
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Set POSTGRES_ADMIN_PASSWORD externally}
+      POSTGRES_DB: postgres
+    ports: ["127.0.0.1:5477:5432"]
+    volumes: ["documents-db:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 20
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.35.0
+    command: azurite-blob --blobHost 0.0.0.0 --location /data --skipApiVersionCheck
+    ports: ["127.0.0.1:10000:10000"]
+    volumes: ["documents-blobs:/data"]
+  clamav:
+    image: clamav/clamav:stable
+    ports: ["127.0.0.1:3310:3310"]
+    volumes: ["documents-av:/var/lib/clamav"]
+volumes:
+  documents-db:
+  documents-blobs:
+  documents-av:
